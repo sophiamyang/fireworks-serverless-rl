@@ -1,45 +1,35 @@
 # Fireworks Serverless RL Colab
 
-[`serverless_rl.ipynb`](serverless_rl.ipynb) is a detailed, single-notebook
-entry point for the upstream Fireworks
+[`serverless_rl.ipynb`](serverless_rl.ipynb) walks through the Fireworks cookbook
 [`training/examples/serverless_rl`](https://github.com/fw-ai/cookbook/tree/main/training/examples/serverless_rl)
-Countdown example.
+Countdown example **step by step in one notebook**.
 
-The notebook does not duplicate or simplify the RL implementation. It:
+Instead of calling `ServerlessCountdownRL(...).run()` as a black box, the notebook:
 
-- sparse-checks out only `training/` from `fw-ai/cookbook`;
-- runs `pip install --pre -e training`;
-- imports the upstream `Config` and `ServerlessCountdownRL` directly from
-  `training/examples/serverless_rl/countdown_rl.py`;
-- uses the bundled `data/countdown_train.jsonl` sample;
-- explicitly keeps Router Replay enabled; and
-- guards construction and execution of the paid trainer behind
-  `RUN_TRAINING = False`.
+- installs the cookbook `training` package (SDK, renderers, Router Replay helpers);
+- inlines the Countdown **`composite_reward`** logic from `countdown_rewards.py`;
+- loads the bundled **`countdown_train.jsonl`** and carves out a fixed eval split;
+- connects to **`/training/v1/serverless`** and creates a LoRA training client;
+- defines explicit **`evaluate()`** and **`training_step()`** functions that mirror
+  the cookbook’s `_evaluate` and `_step` (snapshot → sample → score → GRPO →
+  importance sampling → Adam);
+- keeps **`ROUTER_REPLAY = True`** (MoE models replay sampling routes; dense models skip automatically); and
+- guards all paid API usage behind **`RUN_TRAINING = False`**.
 
 ## Run in Colab
 
-1. Upload or open `serverless_rl.ipynb` in
-   [Google Colab](https://colab.research.google.com/).
-2. Run the setup and configuration cells.
-3. In Colab **Secrets**, add `FIREWORKS_API_KEY` and grant the notebook access.
-4. Review the printed upstream commit and complete configuration.
-5. Only when you intend to incur Fireworks usage, change
-   `RUN_TRAINING = False` to `RUN_TRAINING = True` and run that cell.
+1. Open `serverless_rl.ipynb` in [Google Colab](https://colab.research.google.com/).
+2. Run cells through hyperparameters, rewards, and data prep (no charges).
+3. Add `FIREWORKS_API_KEY` in Colab **Secrets**.
+4. Read the loop explanation and function definitions.
+5. Set `RUN_TRAINING = True` only when you intend to run a paid training session.
 
-The notebook keeps the upstream defaults except for selecting the bundled
-32-row dataset, explicitly enabling Router Replay, and choosing a predictable
-Colab output directory. The default run is not a cheap dry run: it uses 20
-optimizer steps, 16 prompt groups per step, 8 samples per group, and periodic
-held-out evaluation.
+Default hyperparameters match the upstream script (20 steps, 16 prompt groups × 8
+samples, periodic held-out eval). With the 32-row sample file, half the rows are
+held out for evaluation.
 
-## Why the upstream commit is printed
+Artifacts land in `/content/serverless_rl_run` (`metrics.jsonl`, `eval_metrics.jsonl`,
+`final_checkpoint.txt`, and an optional `reward_curve.png`).
 
-Each fresh notebook run checks out the current upstream `main`. That guarantees
-the code being executed is the upstream implementation, but it also means
-behavior can change over time. Save the printed commit SHA with experiment
-results. For repeatable experiments, replace `main` in the checkout cell with
-a reviewed commit SHA.
-
-Training artifacts are written to `/content/serverless_rl_run`. The final
-notebook cell lists the generated metrics, evaluation completions, checkpoint
-references, and reward curve without performing any training itself.
+For DCP resume, promotion, W&B, and shell launchers, see the
+[cookbook README](https://github.com/fw-ai/cookbook/tree/main/training/examples/serverless_rl).
